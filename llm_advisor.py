@@ -4,19 +4,20 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv
-from openai import APIError, OpenAI
+from openai import APIError, AzureOpenAI
 
 from .co2_calculator import EMISSION_FACTOR_KG_PER_KWH
 
 load_dotenv()
 
 
-def _get_openai_config() -> tuple[Optional[str], Optional[str], str]:
-    """Read OpenAI config from .env: api_key, base_url, model."""
+def _get_openai_config() -> tuple[Optional[str], Optional[str], Optional[str], str]:
+    """Read Azure OpenAI config from .env: api_key, base_url, api_version, model."""
     api_key = os.getenv("OPENAI_API_KEY")
     base_url = os.getenv("OPENAI_BASE_URL") or None
+    api_version = os.getenv("OPENAI_API_VERSION") or None
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    return api_key, base_url, model
+    return api_key, base_url, api_version, model
 
 
 def _build_prompt(
@@ -48,14 +49,20 @@ def _build_prompt(
     )
 
 
-def _get_client() -> Optional[OpenAI]:
+def _get_client() -> Optional[AzureOpenAI]:
     """
-    Create an OpenAI client using config from .env (OPENAI_API_KEY, OPENAI_BASE_URL).
+    Create an Azure OpenAI client using config from .env
+    (OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_API_VERSION).
     """
-    api_key, base_url, _ = _get_openai_config()
-    if not api_key:
+    api_key, base_url, api_version, _ = _get_openai_config()
+    if not api_key or not base_url or not api_version:
         return None
-    return OpenAI(api_key=api_key, base_url=base_url)
+    azure_endpoint = base_url.rstrip("/")
+    return AzureOpenAI(
+        api_key=api_key,
+        azure_endpoint=azure_endpoint,
+        api_version=api_version,
+    )
 
 
 def generate_human_advice(
@@ -94,7 +101,7 @@ def generate_human_advice(
             f"electricity and cut emissions by about {potential_co2_saving:.2f} kg CO₂ over this usage."
         )
 
-    _, _, model_name = _get_openai_config()
+    _, _, _, model_name = _get_openai_config()
 
     try:
         response = client.chat.completions.create(
