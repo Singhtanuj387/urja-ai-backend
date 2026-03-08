@@ -9,6 +9,7 @@ load_dotenv()
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from . import analyzer
 from .co2_calculator import calculate_co2
@@ -56,6 +57,21 @@ app = FastAPI(
     title="URJA-AI Backend",
     description="AI-powered smart energy advisor for Indian households.",
     version="0.1.0",
+)
+
+
+def _get_allowed_origins() -> List[str]:
+    raw_origins = os.getenv("FRONTEND_URL", "http://localhost:8080")
+    origins = [origin.strip().rstrip("/") for origin in raw_origins.split(",")]
+    return [origin for origin in origins if origin]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_get_allowed_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
