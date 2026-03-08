@@ -203,6 +203,93 @@ def get_recommendation(
     )
 
 
+@app.get("/recommendations", response_model=List[RecommendationResponse])
+def get_recommendations(
+    date: Optional[str] = Query(
+        None, description="Date to analyze in YYYY-MM-DD format (defaults to latest)"
+    ),
+) -> List[RecommendationResponse]:
+    """
+    Generate recommendations for all major devices used on a given day.
+    Returns a list of recommendation objects matching the single-device schema.
+    """
+    try:
+        data_path = _get_sample_data_path()
+        df = analyzer.load_energy_data(data_path)
+        sessions, summary = analyzer.analyze_daily_usage(df, date=date)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:  # pragma: no cover - defensive
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}")
+
+    if not sessions:
+        raise HTTPException(status_code=400, detail="No device usage sessions detected.")
+
+    # For each device, pick the session with the highest energy consumption
+    best_by_device: dict[str, analyzer.DeviceUsageSession] = {}
+    for s in sessions:
+        existing = best_by_device.get(s.device)
+        if existing is None or s.energy_kwh > existing.energy_kwh:
+            best_by_device[s.device] = s
+
+    results: List[RecommendationResponse] = []
+
+    for device_session in best_by_device.values():
+        usage_hour = device_session.usage_start.hour
+        grid_info = get_grid_load(usage_hour)
+        grid_load = grid_info["grid_load"]
+
+        reco = suggest_optimal_time(
+            session=device_session,
+            grid_load_at_use=grid_load,
+        )
+
+        co2_kg = calculate_co2(device_session.energy_kwh)
+        potential_co2_saving_kg = calculate_co2(reco["energy_saving_kwh"])
+
+        llm_message = generate_human_advice(
+            device=device_session.device,
+            usage_window=device_session.usage_time_str,
+            grid_load=grid_load,
+            energy_kwh=device_session.energy_kwh,
+            co2_kg=co2_kg,
+            recommended_time=reco["recommended_time"],
+            potential_savings_kwh=reco["energy_saving_kwh"],
+        )
+
+        usage_time_str = device_session.usage_time_str
+
+        details = RecommendationDetails(
+            device=device_session.device,
+            usage_time=usage_time_str,
+            grid_load=grid_load,
+            recommended_time=reco["recommended_time"],
+            energy_saving_kwh=reco["energy_saving_kwh"],
+            co2_kg=co2_kg,
+            potential_co2_saving_kg=potential_co2_saving_kg,
+            co2_saving_suggestion=(
+                f"If you follow this schedule, you can avoid roughly "
+                f"{potential_co2_saving_kg:.2f} kg of CO₂ for this usage."
+            ),
+            raw_reason=reco["reason"],
+            llm_message=llm_message,
+        )
+
+        results.append(
+            RecommendationResponse(
+                device=device_session.device,
+                usage_time=usage_time_str,
+                grid_load=grid_load,
+                recommendation=llm_message,
+                details=details,
+            )
+        )
+
+    return results
+
+
 if __name__ == "__main__":
     # Convenience for local development: `python -m urja_ai.main`
     import uvicorn
