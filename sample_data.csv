@@ -100,3 +100,38 @@ timestamp,device,power
 2026-03-06 21:05:00,Mixer Grinder,800
 2026-03-06 21:15:00,Mixer Grinder,800
 2026-03-06 21:20:00,Mixer Grinder,0
+2026-03-06 07:10:00,Electric Kettle,0
+2026-03-06 07:15:00,Electric Kettle,1500
+2026-03-06 07:25:00,Electric Kettle,1500
+2026-03-06 07:30:00,Electric Kettle,0
+2026-03-06 08:00:00,Refrigerator (Compressor),120
+2026-03-06 08:30:00,Refrigerator (Compressor),250
+2026-03-06 09:00:00,Refrigerator (Compressor),0
+2026-03-06 12:00:00,Microwave Oven,0
+2026-03-06 12:10:00,Microwave Oven,1100
+2026-03-06 12:20:00,Microwave Oven,1100
+2026-03-06 12:30:00,Microwave Oven,0
+2026-03-06 13:00:00,Ceiling Fan,0
+2026-03-06 13:15:00,Ceiling Fan,75
+2026-03-06 15:00:00,Ceiling Fan,75
+2026-03-06 15:15:00,Ceiling Fan,0
+2026-03-06 16:00:00,Desktop Computer,0
+2026-03-06 16:15:00,Desktop Computer,300
+2026-03-06 18:00:00,Desktop Computer,300
+2026-03-06 18:15:00,Desktop Computer,0
+2026-03-06 16:30:00,Water Heater (Geyser),0
+2026-03-06 16:35:00,Water Heater (Geyser),2000
+2026-03-06 16:55:00,Water Heater (Geyser),2000
+2026-03-06 17:00:00,Water Heater (Geyser),0
+2026-03-06 20:20:00,Iron,0
+2026-03-06 20:25:00,Iron,1000
+2026-03-06 20:45:00,Iron,1000
+2026-03-06 20:50:00,Iron,0
+2026-03-06 22:00:00,Mobile Charger,0
+2026-03-06 22:10:00,Mobile Charger,15
+2026-03-06 23:20:00,Mobile Charger,15
+2026-03-06 23:30:00,Mobile Charger,0
+2026-03-06 11:00:00,LED TV (32"),0
+2026-03-06 11:15:00,LED TV (32"),55
+2026-03-06 13:00:00,LED TV (32"),55
+2026-03-06 13:15:00,LED TV (32"),0

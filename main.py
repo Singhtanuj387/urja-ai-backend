@@ -113,20 +113,26 @@ def analyze_energy_usage(
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}")
 
-    device_models: List[DeviceUsage] = [
-        DeviceUsage(
-            device=s.device,
-            usage_start=s.usage_start.strftime("%H:%M"),
-            usage_end=s.usage_end.strftime("%H:%M"),
-            duration=s.duration_minutes,
-            energy_kwh=s.energy_kwh,
+    device_models: List[DeviceUsage] = []
+    for s in sessions:
+        co2_kg = calculate_co2(s.energy_kwh)
+        device_models.append(
+            DeviceUsage(
+                device=s.device,
+                usage_start=s.usage_start.strftime("%H:%M"),
+                usage_end=s.usage_end.strftime("%H:%M"),
+                duration=s.duration_minutes,
+                energy_kwh=s.energy_kwh,
+                co2_kg=co2_kg,
+            )
         )
-        for s in sessions
-    ]
+
+    total_co2_kg = calculate_co2(summary.total_energy_kwh)
 
     summary_model = DailyUsagePattern(
         date=summary.date,
         total_energy_kwh=summary.total_energy_kwh,
+        total_co2_kg=total_co2_kg,
         peak_hour=summary.peak_hour,
         most_common_usage_hour=summary.most_common_usage_hour,
         hourly_energy_kwh=summary.hourly_energy_kwh,
@@ -140,83 +146,19 @@ def analyze_energy_usage(
     )
 
 
-@app.get("/recommendation", response_model=RecommendationResponse)
+@app.get("/recommendation", response_model=List[RecommendationResponse])
 def get_recommendation(
     date: Optional[str] = Query(
         None, description="Date to analyze in YYYY-MM-DD format (defaults to latest)"
     ),
-) -> RecommendationResponse:
+) -> List[RecommendationResponse]:
     """
-    Run end-to-end flow:
-    - Analyze sample data
-    - Simulate grid load
-    - Compute CO2 emissions
-    - Generate LLM-based human-friendly recommendation
+    Return recommendations for all major devices used on a given day.
+
+    This is a convenience alias for /recommendations so that existing
+    clients can simply switch to handling an array.
     """
-    try:
-        data_path = _get_sample_data_path()
-        df = analyzer.load_energy_data(data_path)
-        sessions, summary = analyzer.analyze_daily_usage(df, date=date)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:  # pragma: no cover - defensive
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}")
-
-    if not sessions:
-        raise HTTPException(status_code=400, detail="No device usage sessions detected.")
-
-    # Choose the highest-energy session as the primary candidate for optimization
-    primary = max(sessions, key=lambda s: s.energy_kwh)
-    usage_hour = primary.usage_start.hour
-
-    grid_info = get_grid_load(usage_hour)
-    grid_load = grid_info["grid_load"]
-
-    reco = suggest_optimal_time(
-        session=primary,
-        grid_load_at_use=grid_load,
-    )
-
-    co2_kg = calculate_co2(primary.energy_kwh)
-    potential_co2_saving_kg = calculate_co2(reco["energy_saving_kwh"])
-
-    llm_message = generate_human_advice(
-        device=primary.device,
-        usage_window=primary.usage_time_str,
-        grid_load=grid_load,
-        energy_kwh=primary.energy_kwh,
-        co2_kg=co2_kg,
-        recommended_time=reco["recommended_time"],
-        potential_savings_kwh=reco["energy_saving_kwh"],
-    )
-
-    usage_time_str = primary.usage_time_str
-
-    details = RecommendationDetails(
-        device=primary.device,
-        usage_time=usage_time_str,
-        grid_load=grid_load,
-        recommended_time=reco["recommended_time"],
-        energy_saving_kwh=reco["energy_saving_kwh"],
-        co2_kg=co2_kg,
-        potential_co2_saving_kg=potential_co2_saving_kg,
-        co2_saving_suggestion=(
-            f"If you follow this schedule, you can avoid roughly "
-            f"{potential_co2_saving_kg:.2f} kg of CO₂ for this usage."
-        ),
-        raw_reason=reco["reason"],
-        llm_message=llm_message,
-    )
-
-    return RecommendationResponse(
-        device=primary.device,
-        usage_time=usage_time_str,
-        grid_load=grid_load,
-        recommendation=llm_message,
-        details=details,
-    )
+    return get_recommendations(date=date)
 
 
 @app.get("/recommendations", response_model=List[RecommendationResponse])

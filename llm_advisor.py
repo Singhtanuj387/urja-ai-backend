@@ -96,9 +96,10 @@ def generate_human_advice(
         # Fallback: deterministic text so the API is always usable.
         potential_co2_saving = potential_savings_kwh * EMISSION_FACTOR_KG_PER_KWH
         return (
-            f"Running your {device} around {recommended_time} instead of {usage_window} can help "
-            f"avoid high grid load (~{grid_load}%), save roughly {potential_savings_kwh:.2f} kWh of "
-            f"electricity and cut emissions by about {potential_co2_saving:.2f} kg CO₂ over this usage."
+            f"Your {device} usage from {usage_window} currently emits about {co2_kg:.2f} kg CO₂ "
+            f"with grid load around {grid_load}%. Shifting it to around {recommended_time} can "
+            f"save roughly {potential_savings_kwh:.2f} kWh and avoid about "
+            f"{potential_co2_saving:.2f} kg CO₂ each time."
         )
 
     _, _, _, model_name = _get_openai_config()
@@ -119,8 +120,8 @@ def generate_human_advice(
         potential_co2_saving = potential_savings_kwh * EMISSION_FACTOR_KG_PER_KWH
         return (
             f"Running your {device} around {recommended_time} instead of {usage_window} "
-            f"is likely to reduce your bill and emissions, especially since grid load "
-            f"is about {grid_load}% during your current usage window. "
+            f"is likely to reduce your bill and emissions, especially since this usage "
+            f"releases about {co2_kg:.2f} kg CO₂ with grid load near {grid_load}%. "
             f"You could avoid roughly {potential_co2_saving:.2f} kg CO₂ each time."
         )
 
